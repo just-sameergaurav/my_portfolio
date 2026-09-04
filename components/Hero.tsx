@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 import { profile } from "@/lib/data";
 
 // ─── Terminal cycling data ───────────────────────────────────────────────────
-const TERMINAL_STATES = [
+type TLine = {
+  prefix?: string;
+  text?: string;
+  label?: string;
+  val?: string;
+  bare?: boolean;
+  indent?: boolean;
+};
+
+const TERMINAL_STATES: { lines: TLine[] }[] = [
   {
     lines: [
       { prefix: "const", text: " developer = {" },
@@ -43,15 +52,6 @@ const TERMINAL_STATES = [
     ],
   },
 ];
-
-type TLine = {
-  prefix?: string;
-  text?: string;
-  label?: string;
-  val?: string;
-  bare?: boolean;
-  indent?: boolean;
-};
 
 // LINE_INTERVAL: ms between each line appearing
 const LINE_INTERVAL = 420;
