@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -83,6 +84,22 @@ const QUOTES = [
     text: "Dream it. Wish it. Do it.",
     author: "Unknown",
   },
+  {
+    text: "The future depends on what you do today.",
+    author: "Mahatma Gandhi",
+  },
+  {
+    text: "Great things are done by a series of small things brought together.",
+    author: "Vincent van Gogh",
+  },
+  {
+    text: "Success is the sum of small efforts, repeated day in and day out.",
+    author: "Robert Collier",
+  },
+  {
+    text: "Don't limit your challenges. Challenge your limits.",
+    author: "Jerry Dunn",
+  },
 ];
 
 type Props = {
@@ -90,118 +107,217 @@ type Props = {
 };
 
 export default function SurpriseOverlay({ onClose }: Props) {
-  const [quote] = useState(
-    () => QUOTES[Math.floor(Math.random() * QUOTES.length)]
-  );
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const [phase, setPhase] = useState<"in" | "hold" | "out">("in");
 
   useEffect(() => {
-    // Fade in → hold → fade out → unmount
-    const holdTimer = setTimeout(() => setPhase("hold"), 600);
-    const outTimer  = setTimeout(() => setPhase("out"),  4200);
-    const doneTimer = setTimeout(() => onClose(),         5000);
+    // Choose the quote only after mounting.
+    // This avoids hydration mismatch caused by Math.random().
+    setQuoteIndex(Math.floor(Math.random() * QUOTES.length));
 
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
+    const holdTimer = setTimeout(() => {
+      setPhase("hold");
+    }, 600);
+
+    const outTimer = setTimeout(() => {
+      setPhase("out");
+    }, 5200);
+
+    const doneTimer = setTimeout(() => {
+      onClose();
+    }, 5900);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
         setPhase("out");
-        setTimeout(onClose, 600);
+
+        setTimeout(() => {
+          onClose();
+        }, 600);
       }
     };
-    window.addEventListener("keydown", handleKey);
+
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       clearTimeout(holdTimer);
       clearTimeout(outTimer);
       clearTimeout(doneTimer);
-      window.removeEventListener("keydown", handleKey);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [onClose]);
 
+  const handleClose = () => {
+    setPhase("out");
+
+    setTimeout(() => {
+      onClose();
+    }, 600);
+  };
+
+  const quote = QUOTES[quoteIndex];
+
   const opacity = phase === "in" ? 0 : phase === "hold" ? 1 : 0;
-  const scale   = phase === "in" ? 0.94 : 1;
+  const scale = phase === "in" ? 0.94 : phase === "hold" ? 1 : 0.98;
+  const blur = phase === "in" ? "8px" : phase === "hold" ? "0px" : "4px";
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-8"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden p-6 sm:p-8"
       style={{
-        background:
-          "linear-gradient(135deg, #1a0533 0%, #3b0764 25%, #7c2d12 60%, #92400e 100%)",
         opacity,
-        transition: "opacity 600ms cubic-bezier(0.4,0,0.2,1)",
+        backdropFilter: `blur(${blur})`,
+        WebkitBackdropFilter: `blur(${blur})`,
+        background: `
+          radial-gradient(
+            circle at 50% 45%,
+            rgba(251, 191, 36, 0.12) 0%,
+            transparent 30%
+          ),
+          radial-gradient(
+            circle at 15% 20%,
+            rgba(234, 88, 12, 0.25) 0%,
+            transparent 35%
+          ),
+          radial-gradient(
+            circle at 85% 80%,
+            rgba(239, 68, 68, 0.20) 0%,
+            transparent 35%
+          ),
+          linear-gradient(
+            135deg,
+            #12051f 0%,
+            #2a0b45 28%,
+            #5c1d32 62%,
+            #7c2d12 100%
+          )
+        `,
+        transition:
+          "opacity 700ms cubic-bezier(0.4,0,0.2,1), backdrop-filter 700ms ease",
         pointerEvents: phase === "out" ? "none" : "all",
       }}
-      onClick={() => {
-        setPhase("out");
-        setTimeout(onClose, 600);
-      }}
+      onClick={handleClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Surprise motivation"
     >
-      {/* Glowing particles */}
+      {/* Ambient glow */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at center, rgba(251,191,36,0.08), transparent 45%)",
+          animation: "pulseGlow 4s ease-in-out infinite",
+        }}
+      />
+
+      {/* Floating particles */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width:  `${Math.random() * 6 + 2}px`,
-              height: `${Math.random() * 6 + 2}px`,
-              left:   `${Math.random() * 100}%`,
-              top:    `${Math.random() * 100}%`,
-              background: i % 3 === 0
-                ? "rgba(251,191,36,0.6)"
-                : i % 3 === 1
-                  ? "rgba(249,115,22,0.5)"
-                  : "rgba(239,68,68,0.4)",
-              filter: "blur(1px)",
-              animation: `floatUp ${3 + (i % 4)}s ease-in-out ${(i * 0.3) % 2}s infinite`,
-            }}
-          />
-        ))}
+        {Array.from({ length: 24 }).map((_, i) => {
+          const size = 2 + ((i * 7) % 5);
+          const left = (i * 41) % 100;
+          const top = (i * 67) % 100;
+          const duration = 4 + (i % 5);
+          const delay = (i * 0.25) % 3;
+
+          return (
+            <span
+              key={i}
+              className="absolute rounded-full"
+              style={{
+                width: `${size}px`,
+                height: `${size}px`,
+                left: `${left}%`,
+                top: `${top}%`,
+                background:
+                  i % 3 === 0
+                    ? "rgba(251,191,36,0.7)"
+                    : i % 3 === 1
+                      ? "rgba(249,115,22,0.6)"
+                      : "rgba(255,237,213,0.45)",
+                boxShadow: "0 0 12px rgba(251,191,36,0.25)",
+                animation: `floatUp ${duration}s ease-in-out ${delay}s infinite`,
+              }}
+            />
+          );
+        })}
       </div>
 
-      {/* Quote card */}
+      {/* Quote content */}
       <div
-        className="relative max-w-2xl text-center"
+        className="relative z-10 w-full max-w-3xl text-center"
         style={{
           transform: `scale(${scale})`,
-          transition: "transform 700ms cubic-bezier(0.34,1.56,0.64,1)",
+          transition:
+            "transform 900ms cubic-bezier(0.34,1.56,0.64,1)",
         }}
       >
-        {/* Decorative top line */}
-        <div
-          className="mx-auto mb-8 h-px w-24"
-          style={{
-            background: "linear-gradient(90deg, transparent, rgba(251,191,36,0.8), transparent)",
-          }}
-        />
+        {/* Top decorative element */}
+        <div className="mb-7 flex items-center justify-center gap-3 sm:mb-9">
+          <div
+            className="h-px w-12 sm:w-20"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, rgba(251,191,36,0.8))",
+            }}
+          />
 
+          <span
+            className="text-lg"
+            style={{
+              color: "rgba(251,191,36,0.9)",
+              textShadow: "0 0 20px rgba(251,191,36,0.5)",
+            }}
+          >
+            ✦
+          </span>
+
+          <div
+            className="h-px w-12 sm:w-20"
+            style={{
+              background:
+                "linear-gradient(90deg, rgba(251,191,36,0.8), transparent)",
+            }}
+          />
+        </div>
+
+        {/* Quote */}
         <p
-          className="font-display text-3xl font-medium leading-snug tracking-tight sm:text-4xl"
+          className="font-display text-2xl font-medium leading-snug tracking-tight sm:text-4xl md:text-5xl"
           style={{
-            color: "rgba(255,237,213,0.95)",
-            textShadow: "0 2px 40px rgba(251,191,36,0.3)",
+            color: "rgba(255,237,213,0.97)",
+            textShadow:
+              "0 2px 35px rgba(251,191,36,0.22)",
           }}
         >
           &ldquo;{quote.text}&rdquo;
         </p>
 
+        {/* Author */}
         <p
-          className="mt-8 font-mono text-sm tracking-widest uppercase"
-          style={{ color: "rgba(251,191,36,0.7)" }}
+          className="mt-7 font-mono text-xs uppercase tracking-[0.25em] sm:mt-9 sm:text-sm"
+          style={{
+            color: "rgba(251,191,36,0.78)",
+          }}
         >
           — {quote.author}
         </p>
 
-        {/* Decorative bottom line */}
+        {/* Bottom decorative line */}
         <div
-          className="mx-auto mt-8 h-px w-24"
+          className="mx-auto mt-8 h-px w-20 sm:mt-10 sm:w-24"
           style={{
-            background: "linear-gradient(90deg, transparent, rgba(251,191,36,0.8), transparent)",
+            background:
+              "linear-gradient(90deg, transparent, rgba(251,191,36,0.8), transparent)",
           }}
         />
 
+        {/* Close hint */}
         <p
-          className="mt-8 text-xs tracking-wide"
-          style={{ color: "rgba(255,237,213,0.35)" }}
+          className="mt-7 text-[10px] uppercase tracking-[0.18em] sm:mt-8 sm:text-xs"
+          style={{
+            color: "rgba(255,237,213,0.35)",
+          }}
         >
           tap anywhere or press Esc to close
         </p>
@@ -209,8 +325,27 @@ export default function SurpriseOverlay({ onClose }: Props) {
 
       <style>{`
         @keyframes floatUp {
-          0%, 100% { transform: translateY(0px) scale(1); opacity: 0.6; }
-          50%       { transform: translateY(-30px) scale(1.2); opacity: 1; }
+          0%, 100% {
+            transform: translateY(0px) scale(1);
+            opacity: 0.35;
+          }
+
+          50% {
+            transform: translateY(-35px) scale(1.25);
+            opacity: 1;
+          }
+        }
+
+        @keyframes pulseGlow {
+          0%, 100% {
+            opacity: 0.45;
+            transform: scale(1);
+          }
+
+          50% {
+            opacity: 0.9;
+            transform: scale(1.08);
+          }
         }
       `}</style>
     </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { profile } from "@/lib/data";
 
 // ─── Terminal cycling data ───────────────────────────────────────────────────
+
 type TLine = {
   prefix?: string;
   text?: string;
@@ -13,7 +14,11 @@ type TLine = {
   indent?: boolean;
 };
 
-const TERMINAL_STATES: { lines: TLine[] }[] = [
+type TerminalState = {
+  lines: TLine[];
+};
+
+const TERMINAL_STATES: TerminalState[] = [
   {
     lines: [
       { prefix: "const", text: " developer = {" },
@@ -53,12 +58,8 @@ const TERMINAL_STATES: { lines: TLine[] }[] = [
   },
 ];
 
-// LINE_INTERVAL: ms between each line appearing
 const LINE_INTERVAL = 420;
-// HOLD: ms to hold a full state before cycling
 const HOLD = 2400;
-// FADE: ms for fade-in/out transition on each line
-const LINE_FADE = 280;
 
 function TerminalCard() {
   const [stateIdx, setStateIdx] = useState(0);
@@ -72,52 +73,70 @@ function TerminalCard() {
     setLineCount(0);
     setClearing(false);
 
-    // Tick lines in one-by-one
     const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // Reveal each line one by one
     for (let i = 0; i < total; i++) {
       timers.push(
-        setTimeout(() => setLineCount(i + 1), i * LINE_INTERVAL)
+        setTimeout(() => {
+          setLineCount(i + 1);
+        }, i * LINE_INTERVAL)
       );
     }
 
-    // After last line + hold, fade out then switch state
+    // Hold completed state, then fade and switch
     const doneAt = (total - 1) * LINE_INTERVAL + HOLD;
+
     timers.push(
       setTimeout(() => {
         setClearing(true);
-        setTimeout(() => {
-          setStateIdx((s) => (s + 1) % TERMINAL_STATES.length);
-        }, 500);
+
+        timers.push(
+          setTimeout(() => {
+            setStateIdx((current) => {
+              return (current + 1) % TERMINAL_STATES.length;
+            });
+          }, 500)
+        );
       }, doneAt)
     );
 
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      timers.forEach(clearTimeout);
+    };
   }, [stateIdx]);
 
   const state = TERMINAL_STATES[stateIdx];
 
   return (
-    <div className="border border-line-dark bg-charcoal-dim/80 font-mono text-[13px] leading-relaxed backdrop-blur-sm rounded-lg shadow-2xl shadow-black/40 overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-line-dark bg-charcoal-dim/80 font-mono text-[13px] leading-relaxed shadow-2xl shadow-black/40 backdrop-blur-sm">
       {/* macOS-style title bar */}
-      <div className="flex items-center gap-2 border-b border-line-dark px-4 py-3 bg-black/20">
+      <div className="flex items-center gap-2 border-b border-line-dark bg-black/20 px-4 py-3">
         <span className="h-3 w-3 rounded-full bg-red-500/80" />
         <span className="h-3 w-3 rounded-full bg-yellow-400/80" />
         <span className="h-3 w-3 rounded-full bg-green-500/80" />
-        <span className="ml-3 text-xs text-mist-soft/60 tracking-wide">whoami.js</span>
+
+        <span className="ml-3 text-xs tracking-wide text-mist-soft/60">
+          whoami.js
+        </span>
       </div>
 
       {/* Code body */}
       <div
-        className="px-5 py-5 min-h-[160px] transition-opacity duration-500"
-        style={{ opacity: clearing ? 0 : 1 }}
+        className="min-h-[160px] px-5 py-5 transition-opacity duration-500"
+        style={{
+          opacity: clearing ? 0 : 1,
+        }}
       >
         {state.lines.slice(0, lineCount).map((line, i) => (
           <p
             key={`${stateIdx}-${i}`}
-            className={`${line.indent ? "pl-6" : ""} transition-all duration-300`}
+            className={`${line.indent ? "pl-6" : ""
+              } transition-all duration-300`}
             style={{
               opacity: lineCount > i ? 1 : 0,
-              transform: lineCount > i ? "translateY(0)" : "translateY(6px)",
+              transform:
+                lineCount > i ? "translateY(0)" : "translateY(6px)",
               transitionDelay: `${i * 30}ms`,
             }}
           >
@@ -125,21 +144,28 @@ function TerminalCard() {
             {line.prefix && (
               <span className="text-pink-400">{line.prefix}</span>
             )}
+
             {/* plain text */}
             {line.text && (
               <span className="text-mist-soft">{line.text}</span>
             )}
+
             {/* label key */}
-            {line.label && (
+            {"label" in line && line.label && (
               <span className="text-mist-soft/70">{line.label} </span>
             )}
+
             {/* value */}
             {line.val && !line.bare && (
               <span className="text-accent-soft">
                 &quot;{line.val}&quot;
-                {line.label && <span className="text-mist-soft/40">,</span>}
+                {"label" in line && line.label && (
+                  <span className="text-mist-soft/40">,</span>
+                )}
               </span>
             )}
+
+            {/* bare value */}
             {line.val && line.bare && (
               <span className="text-cyan-400">
                 {line.val}
@@ -149,9 +175,9 @@ function TerminalCard() {
           </p>
         ))}
 
-        {/* Blinking cursor — shows while typing */}
+        {/* Blinking cursor */}
         {!clearing && lineCount < state.lines.length && (
-          <span className="inline-block h-4 w-[7px] rounded-sm animate-blink bg-mist-soft/50 ml-0.5" />
+          <span className="ml-0.5 inline-block h-4 w-[7px] rounded-sm bg-mist-soft/50 animate-blink" />
         )}
       </div>
     </div>
@@ -159,6 +185,7 @@ function TerminalCard() {
 }
 
 // ─── Rotating headline phrase ────────────────────────────────────────────────
+
 const PHRASES = [
   "shipping real things.",
   "chasing mastery.",
@@ -177,13 +204,15 @@ function RotatingPhrase() {
 
   useEffect(() => {
     const cycle = () => {
-      // Slide + fade out
+      // Fade out
       setOpacity(0);
       setTranslateY(-10);
+
       setTimeout(() => {
-        setIdx((i) => (i + 1) % PHRASES.length);
+        setIdx((current) => (current + 1) % PHRASES.length);
         setTranslateY(10);
-        // tiny frame to let dom update then fade in
+
+        // Allow DOM to update before fading in
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             setOpacity(1);
@@ -194,16 +223,16 @@ function RotatingPhrase() {
     };
 
     const id = setInterval(cycle, PHRASE_HOLD);
+
     return () => clearInterval(id);
   }, []);
 
   return (
     <span
-      className="text-accent-soft"
+      className="inline-block text-accent-soft"
       style={{
         opacity,
         transform: `translateY(${translateY}px)`,
-        display: "inline-block",
         transition: `opacity ${PHRASE_FADE}ms cubic-bezier(0.4,0,0.2,1), transform ${PHRASE_FADE}ms cubic-bezier(0.4,0,0.2,1)`,
       }}
     >
@@ -213,15 +242,19 @@ function RotatingPhrase() {
 }
 
 // ─── Hero ────────────────────────────────────────────────────────────────────
+
 export default function Hero() {
   return (
-    <section id="top" className="section-pad mx-auto max-w-content pt-16 pb-24 md:pt-24 md:pb-32">
+    <section
+      id="top"
+      className="section-pad mx-auto max-w-content pb-24 pt-16 md:pb-32 md:pt-24"
+    >
       <div className="grid grid-cols-1 items-center gap-16 md:grid-cols-12">
-
         {/* Left */}
         <div className="md:col-span-7">
-          <p className="mb-5 text-sm text-mist-soft font-mono">
-            <span className="text-accent-soft">~/</span> Hi, I&apos;m {profile.fullName}.
+          <p className="mb-5 font-mono text-sm text-mist-soft">
+            <span className="text-accent-soft">~/</span> Hi, I&apos;m{" "}
+            {profile.fullName}.
           </p>
 
           <h1 className="font-display text-4xl font-medium leading-[1.12] tracking-tightest text-mist sm:text-5xl md:text-6xl">
@@ -234,10 +267,11 @@ export default function Hero() {
           </h1>
 
           <p className="mt-7 max-w-prose text-base leading-relaxed text-mist-soft">
-            I&apos;m a self-taught developer who builds because I can&apos;t not.
-            Full-stack, data, cloud — whatever it takes to make something real.
-            I don&apos;t have years of experience yet, but I have the drive, the
-            curiosity, and real projects to show for it. This site is proof.
+            I&apos;m a self-taught developer who builds because I can&apos;t
+            not. Full-stack, data, cloud — whatever it takes to make something
+            real. I don&apos;t have years of experience yet, but I have the
+            drive, the curiosity, and real projects to show for it. This site
+            is proof.
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-6">
@@ -247,6 +281,7 @@ export default function Hero() {
             >
               View my work →
             </a>
+
             <a
               href={profile.resumeUrl}
               className="link-underline text-sm font-medium text-mist-soft"
