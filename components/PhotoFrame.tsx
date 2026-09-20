@@ -30,7 +30,7 @@ export default function PhotoFrame() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/pfp.png"
+              src="/pfp(1).jpeg"
               alt="A candid photo"
               onError={() => setLoaded(false)}
               className="w-full h-auto object-contain transition-all duration-500 hover:scale-[1.02]"
@@ -41,7 +41,7 @@ export default function PhotoFrame() {
         <div className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-3 border border-line bg-paper-dim/40 px-6 text-center dark:border-line-dark dark:bg-charcoal-dim/40">
           <Camera size={20} className="text-ink-soft/50 dark:text-mist-soft/50" />
           <p className="text-xs leading-relaxed text-ink-soft/70 dark:text-mist-soft/70">
-            Add a candid photo — drop <code className="font-mono">pfp.png</code> into{" "}
+            Add a candid photo — drop <code className="font-mono">pfp(1).jpeg</code> into{" "}
             <code className="font-mono">/public</code>
           </p>
         </div>
